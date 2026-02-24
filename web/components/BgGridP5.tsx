@@ -1,3 +1,4 @@
+// components/BgGridP5.tsx
 'use client'
 
 import {useEffect, useRef} from 'react'
@@ -19,19 +20,20 @@ export default function BgGridP5() {
       if (cancelled) return
 
       const sketch = (p: any) => {
-        // bg-grid.js — p5 background radial video grid, controlled by #gridColsSlider
         let bgColor = '#000000'
-        let numCols = 6 // will be set from slider
+        let numCols = 6
         let cellGap = 0
 
         // Auto Row Count
         let autoRowPattern = 'radial' // "radial" | "radialInverse"
-        let autoRowMin = 1 // allow 1 row minimum
-        let autoRowMax = 30 // absolute cap
+        let autoRowMin = 1
+        let autoRowMax = 30
 
-        // How slowly row count grows with columns (step size)
-        // 6 => rows increase by 1 every 6 columns
-        let rowGrowthColsPerStep = 1
+        // Mobile-safe: rows increase slower (less draw load)
+ // Keep desktop behavior EXACTLY as before; reduce load only on mobile
+function getRowGrowthColsPerStep() {
+    return isMobileLike() ? 6 : 1
+  }
 
         // Radial sizing strengths (static)
         const COL_K = 4
@@ -41,39 +43,47 @@ export default function BgGridP5() {
         // Video
         let vid: any = null
         let vidReady = false
+        let videoEl: HTMLVideoElement | null = null
+        let videoCanPlay = false
 
         // Keep listener refs so we can remove them on cleanup
         let sliderEl: HTMLInputElement | null = null
         let onSliderInput: (() => void) | null = null
         let onSliderChange: (() => void) | null = null
         let onGridChange: ((e: Event) => void) | null = null
+        let onFirstGesture: (() => void) | null = null
+        let onVisibilityChange: (() => void) | null = null
+
+        function isMobileLike() {
+          return p.windowWidth < 768
+        }
+
+        function getMaxCols() {
+          return isMobileLike() ? 28 : 75
+        }
+
+        function getAutoRowMax() {
+          return isMobileLike() ? 12 : autoRowMax
+        }
 
         function applyColsFromSlider(v01: number) {
           const v = Number.isFinite(v01) ? v01 : 70
           const cols = Math.round(p.map(v, 0, 100, 1, 75))
-          numCols = p.constrain(cols, 1, 75)
+          numCols = p.constrain(cols, 1, getMaxCols())
         }
 
-        // ---- NEW: global row cap grows slowly with columns ----
-        // 1..6 cols => 1
-        // 7..12 => 2
-        // 13..18 => 3
-        // ...
+        // ---- global row cap grows slowly with columns ----
         function getGlobalMaxRowsForCols(cols: number) {
           const c = Math.max(1, Math.floor(cols || 1))
-          const stepped = 1 + Math.floor((c - 1) / rowGrowthColsPerStep)
-          return p.constrain(stepped, 1, autoRowMax)
+          const stepped = 1 + Math.floor((c - 1) / getRowGrowthColsPerStep())
+          return p.constrain(stepped, 1, getAutoRowMax())
         }
 
-        // ---- Auto row count (radial), but now limited by slow-growing global max ----
         function getRowCountForColumn(colIndex: number) {
           const cols = Math.max(1, numCols)
-
           if (cols === 1) return 1
 
           const globalMaxRows = getGlobalMaxRowsForCols(cols)
-
-          // If global max is 1, every column is 1 row
           if (globalMaxRows <= 1) return 1
 
           return calculateAutoRowCount(colIndex, globalMaxRows)
@@ -81,7 +91,7 @@ export default function BgGridP5() {
 
         function calculateAutoRowCount(colIndex: number, dynamicMaxRows: number) {
           const cols = Math.max(1, numCols)
-          const u = (colIndex + 0.5) / cols // 0..1
+          const u = (colIndex + 0.5) / cols
 
           let factor = 0.5
           if (autoRowPattern === 'radialInverse') {
@@ -92,7 +102,6 @@ export default function BgGridP5() {
 
           factor = p.constrain(factor, 0, 1)
 
-          // dynamic range: 1..globalMaxRows (or autoRowMin..globalMaxRows if you want >1 minimum)
           const minRows = Math.min(autoRowMin, dynamicMaxRows)
           const maxRows = Math.max(minRows, dynamicMaxRows)
 
@@ -100,7 +109,6 @@ export default function BgGridP5() {
           return Math.max(1, rows)
         }
 
-        // ---- Symmetric pixel allocation ----
         function allocatePixelsSym(totalPixels: number, weights: number[]) {
           const n = weights.length
           totalPixels = Math.max(0, Math.floor(totalPixels))
@@ -192,7 +200,6 @@ export default function BgGridP5() {
             if (k > idx.length && out.every((v) => v === minPx)) break
           }
 
-          // exact sum correction (center-out)
           let sum = out.reduce((a, b) => a + b, 0)
           let diff = total - sum
           if (diff !== 0) {
@@ -222,20 +229,18 @@ export default function BgGridP5() {
           p.fill(0)
           p.rect(x, y, w, h)
 
-          if (!vid || !vidReady) return
+          if (!vid || !vidReady || !videoEl || !videoCanPlay) return
 
-          const vw = vid.elt.videoWidth
-          const vh = vid.elt.videoHeight
+          const vw = videoEl.videoWidth
+          const vh = videoEl.videoHeight
           if (!vw || !vh) return
 
-          // cover scale
           const s = Math.max(w / vw, h / vh)
           const dw = vw * s
           const dh = vh * s
           const dx = x + (w - dw) / 2
           const dy = y + (h - dh) / 2
 
-          // clip to cell rect
           const ctx = p.drawingContext as CanvasRenderingContext2D
           ctx.save()
           ctx.beginPath()
@@ -247,33 +252,95 @@ export default function BgGridP5() {
           ctx.restore()
         }
 
+        async function tryPlayVideo() {
+          if (!videoEl) return
+          try {
+            await videoEl.play()
+            videoCanPlay = true
+            vidReady = true
+          } catch (err) {
+            // autoplay still blocked until user gesture
+            videoCanPlay = false
+            console.warn('Video play blocked:', err)
+          }
+        }
+
         p.setup = () => {
           const host = document.getElementById('bg-canvas')
-
-          // Full-viewport canvas
           const c = p.createCanvas(p.windowWidth, p.windowHeight)
-
-          // Put p5 canvas into the background div
           if (host) c.parent(host)
 
-          // video
+          // Mobile-safe video init
           try {
-            vid = p.createVideo('/test.mp4', () => {
-              vidReady = true
-              vid.loop()
-            })
+            vid = p.createVideo('/test.mp4')
+            videoEl = vid?.elt as HTMLVideoElement | null
+
+            if (videoEl) {
+              // autoplay requirements (especially iOS Safari)
+              videoEl.muted = true
+              videoEl.defaultMuted = true
+              videoEl.autoplay = true
+              videoEl.loop = true
+              videoEl.playsInline = true
+              videoEl.preload = 'auto'
+
+              videoEl.setAttribute('muted', '')
+              videoEl.setAttribute('autoplay', '')
+              videoEl.setAttribute('loop', '')
+              videoEl.setAttribute('playsinline', '')
+              videoEl.setAttribute('webkit-playsinline', 'true')
+
+              videoEl.addEventListener(
+                'loadeddata',
+                () => {
+                  vidReady = true
+                  void tryPlayVideo()
+                },
+                {once: true}
+              )
+
+              videoEl.addEventListener('canplay', () => {
+                vidReady = true
+              })
+
+              videoEl.addEventListener('playing', () => {
+                videoCanPlay = true
+                vidReady = true
+              })
+
+              videoEl.addEventListener('pause', () => {
+                // On mobile background/foreground this can pause
+                if (document.visibilityState === 'visible') {
+                  void tryPlayVideo()
+                }
+              })
+            }
+
             vid.hide()
             vid.volume(0)
           } catch (e) {
             console.error('Video init failed:', e)
             vid = null
+            videoEl = null
             vidReady = false
+            videoCanPlay = false
           }
 
-          // hook slider -> columns
+          onFirstGesture = () => {
+            void tryPlayVideo()
+          }
+          window.addEventListener('touchstart', onFirstGesture, {once: true, passive: true})
+          window.addEventListener('click', onFirstGesture, {once: true})
+
+          onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+              void tryPlayVideo()
+            }
+          }
+          document.addEventListener('visibilitychange', onVisibilityChange)
+
           sliderEl = document.getElementById('gridColsSlider') as HTMLInputElement | null
           if (sliderEl) {
-            // initialize once
             applyColsFromSlider(parseInt(sliderEl.value || '70', 10))
 
             onSliderInput = () => {
@@ -289,18 +356,15 @@ export default function BgGridP5() {
             sliderEl.addEventListener('input', onSliderInput)
             sliderEl.addEventListener('change', onSliderChange)
           } else {
-            // fallback if slider missing
             applyColsFromSlider(70)
           }
 
-          // Optional: if your UI script dispatches gridChange with corrected cols,
-          // sync directly to that as well (safe to keep alongside slider listener).
           onGridChange = (e: Event) => {
             const ce = e as CustomEvent
             if (!ce || !ce.detail) return
             const cols = Number(ce.detail.cols)
             if (Number.isFinite(cols)) {
-              numCols = p.constrain(Math.round(cols), 1, 75)
+              numCols = p.constrain(Math.round(cols), 1, getMaxCols())
             }
           }
 
@@ -309,15 +373,16 @@ export default function BgGridP5() {
 
         p.windowResized = () => {
           p.resizeCanvas(p.windowWidth, p.windowHeight)
+
+          // Re-apply constraints for mobile/desktop breakpoints on resize
+          numCols = p.constrain(numCols, 1, getMaxCols())
         }
 
-        // ---- Draw ----
         p.draw = () => {
           p.background(bgColor)
 
-          const cols = Math.max(1, numCols)
+          const cols = Math.max(1, Math.min(numCols, getMaxCols()))
 
-          // column widths (radial)
           const colWeights: number[] = []
           for (let c = 0; c < cols; c++) {
             const u = (c + 0.5) / cols
@@ -336,7 +401,6 @@ export default function BgGridP5() {
             const colW = colWidths[c]
             const rows = Math.max(1, getRowCountForColumn(c))
 
-            // row heights within column (radial)
             const rowWeights: number[] = []
             for (let r = 0; r < rows; r++) {
               const v = (r + 0.5) / rows
@@ -357,22 +421,30 @@ export default function BgGridP5() {
 
             x += colW + cellGap
           }
-
-          // Optional debug:
-          // if (p.frameCount % 30 === 0) {
-          //   console.log("cols:", cols, "globalMaxRows:", getGlobalMaxRowsForCols(cols));
-          // }
         }
 
-        // Cleanup hooks for p5.remove()
         p.remove = ((origRemove) => {
           return function patchedRemove(this: any) {
             try {
               if (sliderEl && onSliderInput) sliderEl.removeEventListener('input', onSliderInput)
               if (sliderEl && onSliderChange) sliderEl.removeEventListener('change', onSliderChange)
               if (onGridChange) window.removeEventListener('gridChange', onGridChange as EventListener)
+
+              if (onFirstGesture) {
+                window.removeEventListener('touchstart', onFirstGesture as EventListener)
+                window.removeEventListener('click', onFirstGesture as EventListener)
+              }
+              if (onVisibilityChange) {
+                document.removeEventListener('visibilitychange', onVisibilityChange)
+              }
+
               if (vid) {
                 try {
+                  if (videoEl) {
+                    videoEl.pause()
+                    videoEl.removeAttribute('src')
+                    videoEl.load()
+                  }
                   vid.stop?.()
                   vid.remove?.()
                 } catch {
@@ -391,9 +463,7 @@ export default function BgGridP5() {
 
     return () => {
       cancelled = true
-      if (p5Instance) {
-        p5Instance.remove()
-      }
+      if (p5Instance) p5Instance.remove()
     }
   }, [])
 

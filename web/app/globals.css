@@ -133,15 +133,19 @@ body {
   cursor: pointer;
 }
 
-/* Accordion (animated with GSAP) */
 .accordion {
   width: 100%;
-  overflow: hidden;
-  height: 0;                 /* GSAP animates this */
+  overflow-x: hidden;
+  overflow-y: auto;   /* enable vertical scroll when needed */
+  height: 0;          /* GSAP animates this */
+  max-height: 60vh;   /* never grow taller than 60% of viewport */
   transform-origin: top;
   will-change: height;
   background-color: #666666;
   border-radius: 5px;
+
+  /* optional nicer scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
 }
 
 .accordion-inner {
@@ -356,4 +360,10 @@ pointer-events: none; /* clicks go through */
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.slider,
+button,
+.contact-button-link {
+  touch-action: manipulation;
 }
