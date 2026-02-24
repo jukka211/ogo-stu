@@ -50,6 +50,9 @@ export default function MenuExperience({settings}: {settings: Settings}) {
   const gridColsLabelRef = useRef<HTMLSpanElement | null>(null)
   const logosMountRef = useRef<HTMLDivElement | null>(null)
 
+  // ✅ Typed GSAP timeline ref (fixes "never" errors)
+  const tlRef = useRef<gsap.core.Timeline | null>(null)
+
   const titleLines = useMemo(
     () => (lang === 'de' ? splitLines(settings?.titleDe) : splitLines(settings?.titleEn)),
     [lang, settings?.titleDe, settings?.titleEn]
@@ -74,49 +77,48 @@ export default function MenuExperience({settings}: {settings: Settings}) {
     const acc = accRef.current
     const inner = innerRef.current
     if (!btn || !chev || !acc || !inner) return
-  
+
     const getMaxAccordionHeight = () => Math.floor(window.innerHeight * 0.6)
-  
+
     // Measure full natural content height of accordion (including logos/buttons)
     const measureAccordionContentHeight = () => {
       // Temporarily ensure the element can be measured
       const prevHidden = acc.hidden
       const prevHeight = acc.style.height
       const prevOverflowY = acc.style.overflowY
-  
+
       acc.hidden = false
       acc.style.height = 'auto'
       acc.style.overflowY = 'hidden' // avoid scrollbar affecting measurement
-  
+
       // scrollHeight includes all children, not just .accordion-inner
       const full = acc.scrollHeight
-  
+
       // restore temporary styles
       acc.style.height = prevHeight
       acc.style.overflowY = prevOverflowY
       acc.hidden = prevHidden
-  
+
       return full
     }
-  
+
     const getOpenHeight = () => {
       const contentHeight = measureAccordionContentHeight()
       return Math.min(contentHeight, getMaxAccordionHeight())
     }
-  
+
     // Initial closed state
-    gsap.set(acc, { height: 0 })
-    gsap.set(inner, { opacity: 0, y: -10 })
-    gsap.set(chev, { rotate: 0, transformOrigin: '50% 50%' })
-  
-    let tl: gsap.core.Timeline | null = null
-  
+    gsap.set(acc, {height: 0})
+    gsap.set(inner, {opacity: 0, y: -10})
+    gsap.set(chev, {rotate: 0, transformOrigin: '50% 50%'})
+
     const buildTimeline = () => {
       const targetHeight = getOpenHeight()
-  
-      if (tl) tl.kill()
-  
-      tl = gsap.timeline({ paused: true })
+
+      tlRef.current?.kill()
+
+      tlRef.current = gsap
+        .timeline({paused: true})
         .to(
           acc,
           {
@@ -146,30 +148,30 @@ export default function MenuExperience({settings}: {settings: Settings}) {
           0
         )
     }
-  
+
     buildTimeline()
-  
+
     if (open) {
       acc.hidden = false
       btn.setAttribute('aria-expanded', 'true')
       buildTimeline()
-      tl?.invalidate().restart()
+      tlRef.current?.invalidate().restart()
     } else {
       btn.setAttribute('aria-expanded', 'false')
-      tl?.reverse()
-      tl?.eventCallback('onReverseComplete', () => {
+      tlRef.current?.eventCallback('onReverseComplete', () => {
         acc.hidden = true
-        gsap.set(acc, { height: 0 })
-        gsap.set(inner, { opacity: 0, y: -10 })
-        gsap.set(chev, { rotate: 0 })
+        gsap.set(acc, {height: 0})
+        gsap.set(inner, {opacity: 0, y: -10})
+        gsap.set(chev, {rotate: 0})
       })
+      tlRef.current?.reverse()
     }
-  
+
     // Recalculate open height on resize while accordion is open
     const onResize = () => {
       if (!accRef.current) return
       if (!open) return
-  
+
       const newHeight = getOpenHeight()
       gsap.to(acc, {
         height: newHeight,
@@ -178,12 +180,13 @@ export default function MenuExperience({settings}: {settings: Settings}) {
         overwrite: true,
       })
     }
-  
+
     window.addEventListener('resize', onResize)
-  
+
     return () => {
       window.removeEventListener('resize', onResize)
-      tl?.kill()
+      tlRef.current?.kill()
+      tlRef.current = null
     }
   }, [open, lang, settings])
 
@@ -208,14 +211,14 @@ export default function MenuExperience({settings}: {settings: Settings}) {
     }
 
     function colsToRows(cols: number, maxRowsDesktop = 13) {
-        const c = Math.max(1, Number(cols) || 1)
-        const isMobile = window.innerWidth < 768
-        const maxRows = isMobile ? 12 : maxRowsDesktop
-        const growthStep = isMobile ? 6 : 1
-      
-        const rows = 1 + Math.floor((c - 1) / growthStep)
-        return Math.min(maxRows, rows)
-      }
+      const c = Math.max(1, Number(cols) || 1)
+      const isMobile = window.innerWidth < 768
+      const maxRows = isMobile ? 12 : maxRowsDesktop
+      const growthStep = isMobile ? 6 : 1
+
+      const rows = 1 + Math.floor((c - 1) / growthStep)
+      return Math.min(maxRows, rows)
+    }
 
     function updateThumbLabel(
       slider: HTMLInputElement | null,
