@@ -102,7 +102,7 @@ body {
   height: var(--control-h);
   padding: 0 10px;
   background-color: #666666;
-  border-radius:5px;
+  border-radius: 10px;
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
