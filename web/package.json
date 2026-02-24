@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@sanity/client": "^7.15.0",
+    "gsap": "^3.14.2",
     "next": "16.1.6",
     "next-sanity": "^12.1.0",
+    "p5": "^2.2.2",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

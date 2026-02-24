@@ -1,3 +1,6 @@
-import { home } from "./home";
+import {siteSettings} from './siteSettings'
 
-export const schemaTypes = [home];
+export const schemaTypes = [
+  siteSettings,
+  // ...other schema types
+]

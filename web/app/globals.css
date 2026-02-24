@@ -1,16 +1,359 @@
 :root {
-  --font-inter: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
-    "Apple Color Emoji", "Segoe UI Emoji";
-  --font-sometype-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  --gap: 12px;
+  --pad-y: 10px;
+  --pad-x: 14px;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --font-size-small: 0.65rem;
+  --font-size-medium: 0.9rem;
+  --accent-hue: 116;
+  --accent-color: hsl(var(--accent-hue) 100% 50%);
+  --menu-row-pad: 3px;
+  --control-h: 1.1rem;
+  --slider-w: 130px;
 }
 
 body {
-  font-family: var(--font-sometype-mono);
-  background-color: #666666;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  margin: 3px;
+  color: var(--text);
 }
-p, h1 {
+
+.menu-container {
+  width: 25vw;
+  max-width: 30vw;
+  display: grid;
+  gap: 3px;
+  position: fixed;
+  bottom: 3px;
+}
+
+@media (max-width: 768px) {
+  .menu-container {
+    left: 3px;
+    right: 3px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+
+  justify-content: space-between;
+  width: 100%;
+  height: 1.7rem;
+  padding: var(--menu-row-pad);
+  box-sizing: border-box;
+  overflow: hidden;
+  background-color: #9E9E9E;
+  border: none;
+  border-radius: 5px;
+}
+
+.slider-wrap {
+  width: var(--slider-w);
+  max-width: 38%;
+  min-width: 72px;
+  height: var(--control-h);
+  position: relative;
+  flex: 0 1 var(--slider-w);
+}
+
+.thumb-label {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  width: var(--thumb-w, 35px);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding-top: 1px;
+  padding-bottom: 0;
+  text-align: center;
+  font-size: var(--font-size-small);
+
+  line-height: 1;
+  color: #000;
+  pointer-events: none;
+  z-index: 3;
+  font-family: "SomeType Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.label {
+    font-family: "SomeType Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 500;
+  font-size: var(--font-size-small);
+  color: var(--accent-color);
+  letter-spacing: 0.1em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h);
+  padding: 0 10px;
+  background-color: #666666;
+  border-radius:5px;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.chev {
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1;
+  transform: translateY(-1px);
+  user-select: none;
+  color: #666666;
+}
+
+/* Menu button: no background / no special styling */
+.menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  height: var(--control-h);
+  gap: 8px;
+  background: none;
+  border: 0;
+  padding: 0;
   margin: 0;
-  line-height: 110%;
-  color:#11FF00;
+  margin-right: 5rem;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Accordion (animated with GSAP) */
+.accordion {
+  width: 100%;
+  overflow: hidden;
+  height: 0;                 /* GSAP animates this */
+  transform-origin: top;
+  will-change: height;
+  background-color: #666666;
+  border-radius: 5px;
+}
+
+.accordion-inner {
+  padding: 18px 14px 14px;
+  display: grid;
+  gap: 18px;
+  place-items: center;
+  color: var(--accent-color);
+}
+
+/* Title styling (keep as requested) */
+.acc-title {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 900;
+  font-size: 2rem;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  text-align: center;
+}
+
+/* Services text styling (keep as requested) */
+.acc-text {
+  font-family: "SomeType Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 500;
+  font-size: var(--font-size-medium);
+  letter-spacing: 0;
+  line-height: 0.9;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.acc-services {
+  margin-bottom: 10px;
+}
+
+.menu-logo-block {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+}
+
+.lang-btn {
+    width: 100%;
+    height: 1.7rem;
+    background-color: #9E9E9E;
+    border: none;
+    border-radius: 5px;
+  color: #000;
+  cursor: pointer;
+  font-family: "SomeType Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 500;
+  font-size: var(--font-size-medium);
+  letter-spacing: 0.1em;
+  line-height: 0.9;
+  text-align: center;
+  text-transform: uppercase;
+  padding: 0;
+}
+
+
+
+.lang-btn.is-active {
+ background-color: var(--accent-color);
+ letter-spacing: 0.1em;
+}
+
+.buttons-block {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)); /* or 3 if you have 3 buttons */
+  gap: 3px;
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+.contact-button {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+
+  height: 1.7rem;
+  border: none;
+  border-radius: 5px;
+  background-color: #9E9E9E;
+  color: #000;
+  cursor: pointer;
+  font-family: "SomeType Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 500;
+  font-size: var(--font-size-medium);
+  letter-spacing: 0.1em;
+  line-height: 0.9;
+  text-align: center;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.contact-button-link {
+  text-decoration: none;
+}
+/* SVG takes ~20% height and is centered */
+.acc-svg {
+  height: 20%;
+  display: grid;
+  place-items: center;
+}
+
+.logos-image {
+  width: 100%;
+  height: 5rem;
+}
+
+.logos-image svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Range sliders styled like a toggle (thumb has an inner dot) */
+.slider {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: block;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Track */
+.slider::-webkit-slider-runnable-track {
+height: 100%;
+background: #666666;
+border-radius: 10px;
+}
+
+/* Thumb (the “toggle”) */
+/* padding doesn't work here reliably — use border as the 2px “padding ring” */
+.slider::-webkit-slider-thumb {
+-webkit-appearance: none;
+appearance: none;
+
+width: 70px;
+height: 100%;
+border-radius: 10px;
+
+background: var(--accent-color);         /* inner color */
+border: 2px solid #666666; /* 2px ring around (acts like padding) */
+box-sizing: border-box;
+margin-top: 0;
+
+cursor: pointer;
+}
+
+/* Firefox equivalents */
+.slider::-moz-range-track {
+height: 100%;
+background: #666666;
+border-radius: 10px;
+}
+
+.slider::-moz-range-thumb {
+width: 70px;
+height: 100%;
+border-radius: 10px;
+
+background: var(--accent-color);
+border: 2px solid #666666;
+box-sizing: border-box;
+
+cursor: pointer;
+}
+/* --- Background canvas --- */
+#bg-canvas {
+position: fixed;
+inset: 0;
+z-index: -1;          /* behind everything */
+pointer-events: none; /* clicks go through */
+}
+
+/* ensure content sits above */
+.menu-container { z-index: 2; }
+
+
+/* Remove the default focus outline, but keep accessible focus styling */
+.slider:focus { outline: none; }
+.slider:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 4px;
+  border-radius: 10px;
+}
+
+.logos-image {
+  width: 100%;
+  height: 5rem;
+  display: grid;
+  place-items: center;
+}
+
+.logos-svg-inline {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
