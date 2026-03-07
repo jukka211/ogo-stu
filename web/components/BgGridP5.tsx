@@ -3,8 +3,17 @@
 
 import {useEffect, useRef} from 'react'
 
-export default function BgGridP5() {
+type BgGridP5Props = {
+  gridValue: number
+}
+
+export default function BgGridP5({gridValue}: BgGridP5Props) {
   const initialized = useRef(false)
+  const gridValueRef = useRef(gridValue)
+
+  useEffect(() => {
+    gridValueRef.current = gridValue
+  }, [gridValue])
 
   useEffect(() => {
     if (initialized.current) return
@@ -24,32 +33,23 @@ export default function BgGridP5() {
         let numCols = 6
         let cellGap = 0
 
-        // Auto Row Count
         let autoRowPattern = 'radial' // "radial" | "radialInverse"
         let autoRowMin = 1
         let autoRowMax = 30
 
-        // Mobile-safe: rows increase slower (less draw load)
- // Keep desktop behavior EXACTLY as before; reduce load only on mobile
-function getRowGrowthColsPerStep() {
-    return isMobileLike() ? 6 : 1
-  }
+        function getRowGrowthColsPerStep() {
+          return isMobileLike() ? 6 : 1
+        }
 
-        // Radial sizing strengths (static)
         const COL_K = 4
         const ROW_K = 1.0
         const MIN_CELL_PX = 6
 
-        // Video
         let vid: any = null
         let vidReady = false
         let videoEl: HTMLVideoElement | null = null
         let videoCanPlay = false
 
-        // Keep listener refs so we can remove them on cleanup
-        let sliderEl: HTMLInputElement | null = null
-        let onSliderInput: (() => void) | null = null
-        let onSliderChange: (() => void) | null = null
         let onGridChange: ((e: Event) => void) | null = null
         let onFirstGesture: (() => void) | null = null
         let onVisibilityChange: (() => void) | null = null
@@ -72,7 +72,6 @@ function getRowGrowthColsPerStep() {
           numCols = p.constrain(cols, 1, getMaxCols())
         }
 
-        // ---- global row cap grows slowly with columns ----
         function getGlobalMaxRowsForCols(cols: number) {
           const c = Math.max(1, Math.floor(cols || 1))
           const stepped = 1 + Math.floor((c - 1) / getRowGrowthColsPerStep())
@@ -171,7 +170,7 @@ function getRowGrowthColsPerStep() {
           const n = sizes.length
           if (n === 0) return sizes
 
-          let out = sizes.slice()
+          const out = sizes.slice()
           let deficit = 0
 
           for (let i = 0; i < n; i++) {
@@ -210,11 +209,9 @@ function getRowGrowthColsPerStep() {
               if (diff > 0) {
                 out[i] += 1
                 diff--
-              } else {
-                if (out[i] > minPx) {
-                  out[i] -= 1
-                  diff++
-                }
+              } else if (out[i] > minPx) {
+                out[i] -= 1
+                diff++
               }
               j++
               if (j > order.length && diff < 0 && out.every((v) => v === minPx)) break
@@ -259,7 +256,6 @@ function getRowGrowthColsPerStep() {
             videoCanPlay = true
             vidReady = true
           } catch (err) {
-            // autoplay still blocked until user gesture
             videoCanPlay = false
             console.warn('Video play blocked:', err)
           }
@@ -270,13 +266,11 @@ function getRowGrowthColsPerStep() {
           const c = p.createCanvas(p.windowWidth, p.windowHeight)
           if (host) c.parent(host)
 
-          // Mobile-safe video init
           try {
             vid = p.createVideo('/test.mp4')
             videoEl = vid?.elt as HTMLVideoElement | null
 
             if (videoEl) {
-              // autoplay requirements (especially iOS Safari)
               videoEl.muted = true
               videoEl.defaultMuted = true
               videoEl.autoplay = true
@@ -309,7 +303,6 @@ function getRowGrowthColsPerStep() {
               })
 
               videoEl.addEventListener('pause', () => {
-                // On mobile background/foreground this can pause
                 if (document.visibilityState === 'visible') {
                   void tryPlayVideo()
                 }
@@ -339,25 +332,7 @@ function getRowGrowthColsPerStep() {
           }
           document.addEventListener('visibilitychange', onVisibilityChange)
 
-          sliderEl = document.getElementById('gridColsSlider') as HTMLInputElement | null
-          if (sliderEl) {
-            applyColsFromSlider(parseInt(sliderEl.value || '70', 10))
-
-            onSliderInput = () => {
-              if (!sliderEl) return
-              applyColsFromSlider(parseInt(sliderEl.value || '70', 10))
-            }
-
-            onSliderChange = () => {
-              if (!sliderEl) return
-              applyColsFromSlider(parseInt(sliderEl.value || '70', 10))
-            }
-
-            sliderEl.addEventListener('input', onSliderInput)
-            sliderEl.addEventListener('change', onSliderChange)
-          } else {
-            applyColsFromSlider(70)
-          }
+          applyColsFromSlider(gridValueRef.current)
 
           onGridChange = (e: Event) => {
             const ce = e as CustomEvent
@@ -373,12 +348,13 @@ function getRowGrowthColsPerStep() {
 
         p.windowResized = () => {
           p.resizeCanvas(p.windowWidth, p.windowHeight)
-
-          // Re-apply constraints for mobile/desktop breakpoints on resize
           numCols = p.constrain(numCols, 1, getMaxCols())
+          applyColsFromSlider(gridValueRef.current)
         }
 
         p.draw = () => {
+          applyColsFromSlider(gridValueRef.current)
+
           p.background(bgColor)
 
           const cols = Math.max(1, Math.min(numCols, getMaxCols()))
@@ -426,14 +402,13 @@ function getRowGrowthColsPerStep() {
         p.remove = ((origRemove) => {
           return function patchedRemove(this: any) {
             try {
-              if (sliderEl && onSliderInput) sliderEl.removeEventListener('input', onSliderInput)
-              if (sliderEl && onSliderChange) sliderEl.removeEventListener('change', onSliderChange)
               if (onGridChange) window.removeEventListener('gridChange', onGridChange as EventListener)
 
               if (onFirstGesture) {
                 window.removeEventListener('touchstart', onFirstGesture as EventListener)
                 window.removeEventListener('click', onFirstGesture as EventListener)
               }
+
               if (onVisibilityChange) {
                 document.removeEventListener('visibilitychange', onVisibilityChange)
               }

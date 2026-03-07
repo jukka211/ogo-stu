@@ -4,8 +4,7 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
 import gsap from 'gsap'
 import BgGridP5 from '@/components/BgGridP5'
-import {urlFor} from '@/lib/image'
-import AccentLogosSvg from '@/components/AccentLogosSvg'
+import OgoGridLogo from '@/components/OgoGridLogo'
 
 type ContactButton = {
   label?: string
@@ -21,7 +20,6 @@ type Settings = {
   langLabelDe?: string
   langLabelEn?: string
   contactButtons?: ContactButton[]
-  ogoLogo?: any
   logosSvgFile?: {
     asset?: {url?: string}
   }
@@ -39,18 +37,23 @@ export default function MenuExperience({settings}: {settings: Settings}) {
   const [lang, setLang] = useState<'de' | 'en'>('de')
   const [open, setOpen] = useState(false)
 
+  // slider 1 = logo grid
+  const [logoGridValue, setLogoGridValue] = useState(33)
+
+  // slider 2 = background grid
+  const [bgGridValue, setBgGridValue] = useState(2)
+
   const btnRef = useRef<HTMLButtonElement | null>(null)
   const chevRef = useRef<HTMLSpanElement | null>(null)
   const accRef = useRef<HTMLDivElement | null>(null)
   const innerRef = useRef<HTMLDivElement | null>(null)
 
-  const accentHueSliderRef = useRef<HTMLInputElement | null>(null)
-  const accentHueLabelRef = useRef<HTMLSpanElement | null>(null)
-  const gridColsSliderRef = useRef<HTMLInputElement | null>(null)
-  const gridColsLabelRef = useRef<HTMLSpanElement | null>(null)
-  const logosMountRef = useRef<HTMLDivElement | null>(null)
+  const logoGridSliderRef = useRef<HTMLInputElement | null>(null)
+  const logoGridLabelRef = useRef<HTMLSpanElement | null>(null)
 
-  // ✅ Typed GSAP timeline ref (fixes "never" errors)
+  const bgGridSliderRef = useRef<HTMLInputElement | null>(null)
+  const bgGridLabelRef = useRef<HTMLSpanElement | null>(null)
+
   const tlRef = useRef<gsap.core.Timeline | null>(null)
 
   const titleLines = useMemo(
@@ -68,149 +71,138 @@ export default function MenuExperience({settings}: {settings: Settings}) {
         {label: 'Impressum', href: '/impressum'},
       ]
 
-  const ogoLogoSrc = settings?.ogoLogo ? urlFor(settings.ogoLogo).url() : '/ogo-logo.svg'
+      useEffect(() => {
+        const btn = btnRef.current
+        const chev = chevRef.current
+        const acc = accRef.current
+        const inner = innerRef.current
+        if (!btn || !chev || !acc || !inner) return
+      
+        const getMaxAccordionHeight = () => Math.floor(window.innerHeight * 0.6)
+      
+        const measureAccordionContentHeight = () => {
+          const prevHidden = acc.hidden
+          const prevHeight = acc.style.height
+          const prevOverflowY = acc.style.overflowY
+      
+          acc.hidden = false
+          acc.style.height = 'auto'
+          acc.style.overflowY = 'hidden'
+      
+          const full = acc.scrollHeight
+      
+          acc.style.height = prevHeight
+          acc.style.overflowY = prevOverflowY
+          acc.hidden = prevHidden
+      
+          return full
+        }
+      
+        const getOpenHeight = () => {
+          const contentHeight = measureAccordionContentHeight()
+          return Math.min(contentHeight, getMaxAccordionHeight())
+        }
+      
+        const buildTimeline = () => {
+          const targetHeight = getOpenHeight()
+      
+          tlRef.current?.kill()
+      
+          tlRef.current = gsap
+            .timeline({paused: true})
+            .to(
+              acc,
+              {
+                height: targetHeight,
+                duration: 0.55,
+                ease: 'power3.inOut',
+              },
+              0
+            )
+            .to(
+              inner,
+              {
+                opacity: 1,
+                y: 0,
+                duration: 0.35,
+                ease: 'power2.out',
+              },
+              0.15
+            )
+            .to(
+              chev,
+              {
+                rotate: 180,
+                duration: 0.35,
+                ease: 'power2.out',
+              },
+              0
+            )
+        }
+      
+        // only initialize closed state when timeline doesn't exist yet
+        if (!tlRef.current) {
+          gsap.set(acc, {height: 0})
+          gsap.set(inner, {opacity: 0, y: -10})
+          gsap.set(chev, {rotate: 0, transformOrigin: '50% 50%'})
+          acc.hidden = true
+          buildTimeline()
+        }
+      
+        if (open) {
+          acc.hidden = false
+          btn.setAttribute('aria-expanded', 'true')
+      
+          // rebuild only when opening, so reverse still has the open state to animate from
+          buildTimeline()
+          tlRef.current?.play(0)
+        } else {
+          btn.setAttribute('aria-expanded', 'false')
+          tlRef.current?.eventCallback('onReverseComplete', () => {
+            acc.hidden = true
+          })
+          tlRef.current?.reverse()
+        }
+      
+        const onResize = () => {
+          if (!open) return
+      
+          const newHeight = getOpenHeight()
+          gsap.to(acc, {
+            height: newHeight,
+            duration: 0.2,
+            ease: 'power1.out',
+            overwrite: true,
+          })
+        }
+      
+        window.addEventListener('resize', onResize)
+      
+        return () => {
+          window.removeEventListener('resize', onResize)
+        }
+      }, [open, lang, settings])
 
-  // GSAP accordion
-  useEffect(() => {
-    const btn = btnRef.current
-    const chev = chevRef.current
-    const acc = accRef.current
-    const inner = innerRef.current
-    if (!btn || !chev || !acc || !inner) return
-
-    const getMaxAccordionHeight = () => Math.floor(window.innerHeight * 0.6)
-
-    // Measure full natural content height of accordion (including logos/buttons)
-    const measureAccordionContentHeight = () => {
-      // Temporarily ensure the element can be measured
-      const prevHidden = acc.hidden
-      const prevHeight = acc.style.height
-      const prevOverflowY = acc.style.overflowY
-
-      acc.hidden = false
-      acc.style.height = 'auto'
-      acc.style.overflowY = 'hidden' // avoid scrollbar affecting measurement
-
-      // scrollHeight includes all children, not just .accordion-inner
-      const full = acc.scrollHeight
-
-      // restore temporary styles
-      acc.style.height = prevHeight
-      acc.style.overflowY = prevOverflowY
-      acc.hidden = prevHidden
-
-      return full
-    }
-
-    const getOpenHeight = () => {
-      const contentHeight = measureAccordionContentHeight()
-      return Math.min(contentHeight, getMaxAccordionHeight())
-    }
-
-    // Initial closed state
-    gsap.set(acc, {height: 0})
-    gsap.set(inner, {opacity: 0, y: -10})
-    gsap.set(chev, {rotate: 0, transformOrigin: '50% 50%'})
-
-    const buildTimeline = () => {
-      const targetHeight = getOpenHeight()
-
-      tlRef.current?.kill()
-
-      tlRef.current = gsap
-        .timeline({paused: true})
-        .to(
-          acc,
-          {
-            height: targetHeight,
-            duration: 0.55,
-            ease: 'power3.inOut',
-          },
-          0
-        )
-        .to(
-          inner,
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.35,
-            ease: 'power2.out',
-          },
-          0.15
-        )
-        .to(
-          chev,
-          {
-            rotate: 180,
-            duration: 0.35,
-            ease: 'power2.out',
-          },
-          0
-        )
-    }
-
-    buildTimeline()
-
-    if (open) {
-      acc.hidden = false
-      btn.setAttribute('aria-expanded', 'true')
-      buildTimeline()
-      tlRef.current?.invalidate().restart()
-    } else {
-      btn.setAttribute('aria-expanded', 'false')
-      tlRef.current?.eventCallback('onReverseComplete', () => {
-        acc.hidden = true
-        gsap.set(acc, {height: 0})
-        gsap.set(inner, {opacity: 0, y: -10})
-        gsap.set(chev, {rotate: 0})
-      })
-      tlRef.current?.reverse()
-    }
-
-    // Recalculate open height on resize while accordion is open
-    const onResize = () => {
-      if (!accRef.current) return
-      if (!open) return
-
-      const newHeight = getOpenHeight()
-      gsap.to(acc, {
-        height: newHeight,
-        duration: 0.2,
-        ease: 'power1.out',
-        overwrite: true,
-      })
-    }
-
-    window.addEventListener('resize', onResize)
-
-    return () => {
-      window.removeEventListener('resize', onResize)
-      tlRef.current?.kill()
-      tlRef.current = null
-    }
-  }, [open, lang, settings])
-
-  // Sliders + labels + accent hue + grid event + logo colorization
   useEffect(() => {
     const root = document.documentElement
-    const accentHueSlider = accentHueSliderRef.current
-    const accentHueLabel = accentHueLabelRef.current
-    const gridColsSlider = gridColsSliderRef.current
-    const gridColsLabel = gridColsLabelRef.current
+    const logoGridSlider = logoGridSliderRef.current
+    const logoGridLabel = logoGridLabelRef.current
+    const bgGridSlider = bgGridSliderRef.current
+    const bgGridLabel = bgGridLabelRef.current
 
-    function setAccentHue(value: string | number) {
-      const hue = Math.min(360, Math.max(0, Number.parseInt(String(value), 10) || 116))
-      root.style.setProperty('--accent-hue', String(hue))
+    function sliderValueToLogoCols(value: string | number) {
+      const v = Math.min(100, Math.max(0, Number.parseInt(String(value), 10) || 0))
+      return Math.round((v / 100) * (15 - 3) + 3) // 3..15
     }
 
-    function sliderValueToCols(value: string | number) {
+    function sliderValueToBgCols(value: string | number) {
       const v = Math.min(100, Math.max(0, Number.parseInt(String(value), 10) || 0))
       const rawCols = Math.round((v / 100) * 74 + 1)
       const isMobile = window.innerWidth < 768
       return Math.min(isMobile ? 28 : 75, rawCols)
     }
 
-    function colsToRows(cols: number, maxRowsDesktop = 13) {
+    function bgColsToRows(cols: number, maxRowsDesktop = 13) {
       const c = Math.max(1, Number(cols) || 1)
       const isMobile = window.innerWidth < 768
       const maxRows = isMobile ? 12 : maxRowsDesktop
@@ -242,11 +234,12 @@ export default function MenuExperience({settings}: {settings: Settings}) {
       label.textContent = formatter(value)
     }
 
-    function updateGridDerivedValues() {
-      if (!gridColsSlider) return
-      const slider = Number(gridColsSlider.value)
-      const cols = sliderValueToCols(slider)
-      const rows = colsToRows(cols, 13)
+    function updateBackgroundGridDerivedValues() {
+      if (!bgGridSlider) return
+
+      const slider = Number(bgGridSlider.value)
+      const cols = sliderValueToBgCols(slider)
+      const rows = bgColsToRows(cols, 13)
 
       root.style.setProperty('--grid-cols', String(cols))
       root.style.setProperty('--grid-rows', String(rows))
@@ -262,136 +255,84 @@ export default function MenuExperience({settings}: {settings: Settings}) {
     }
 
     function updateAllThumbLabels() {
-      updateThumbLabel(accentHueSlider, accentHueLabel, (v) => `hsl:${Math.round(v)}`, 70)
-
       updateThumbLabel(
-        gridColsSlider,
-        gridColsLabel,
+        logoGridSlider,
+        logoGridLabel,
         (v) => {
-          const cols = sliderValueToCols(v)
-          const rows = colsToRows(cols, 13)
-          return `${cols}×${rows}`
+          const cols = sliderValueToLogoCols(v)
+          return `${cols}`
         },
-        70
+        32
       )
-
-      updateGridDerivedValues()
+    
+      updateThumbLabel(
+        bgGridSlider,
+        bgGridLabel,
+        (v) => {
+          const cols = sliderValueToBgCols(v)
+          return `${cols}`
+        },
+        32
+      )
+    
+      updateBackgroundGridDerivedValues()
     }
 
-    async function mountAccentLogo() {
-      const mount = logosMountRef.current
-      const svgUrl = settings?.logosSvgFile?.asset?.url || '/logos.svg'
-      if (!mount || !svgUrl) return
-
-      try {
-        const response = await fetch(svgUrl)
-        if (!response.ok) return
-
-        const svgText = await response.text()
-        mount.innerHTML = svgText
-
-        const svg = mount.querySelector('svg')
-        if (!svg) return
-
-        svg.removeAttribute('width')
-        svg.removeAttribute('height')
-
-        svg.querySelectorAll('[fill]').forEach((node) => {
-          const fill = (node.getAttribute('fill') || '').trim().toLowerCase()
-          if (fill === '#11ff00') {
-            node.setAttribute('fill', 'var(--accent-color)')
-          }
-        })
-      } catch {
-        // no-op
-      }
-    }
-
-    const onAccent = () => {
-      if (!accentHueSlider) return
-      setAccentHue(accentHueSlider.value)
+    const onLogoGrid = () => {
+      if (!logoGridSlider) return
+      setLogoGridValue(Number(logoGridSlider.value))
       updateAllThumbLabels()
     }
 
-    const onGrid = () => updateAllThumbLabels()
-
-    if (accentHueSlider) {
-      setAccentHue(accentHueSlider.value)
-      accentHueSlider.addEventListener('input', onAccent)
-      accentHueSlider.addEventListener('change', onAccent)
+    const onBgGrid = () => {
+      if (!bgGridSlider) return
+      setBgGridValue(Number(bgGridSlider.value))
+      updateAllThumbLabels()
     }
 
-    if (gridColsSlider) {
-      gridColsSlider.addEventListener('input', onGrid)
-      gridColsSlider.addEventListener('change', onGrid)
+    if (logoGridSlider) {
+      setLogoGridValue(Number(logoGridSlider.value))
+      logoGridSlider.addEventListener('input', onLogoGrid)
+      logoGridSlider.addEventListener('change', onLogoGrid)
+    }
+
+    if (bgGridSlider) {
+      setBgGridValue(Number(bgGridSlider.value))
+      bgGridSlider.addEventListener('input', onBgGrid)
+      bgGridSlider.addEventListener('change', onBgGrid)
     }
 
     window.addEventListener('resize', updateAllThumbLabels)
 
     updateAllThumbLabels()
-    mountAccentLogo()
 
     return () => {
-      accentHueSlider?.removeEventListener('input', onAccent)
-      accentHueSlider?.removeEventListener('change', onAccent)
-      gridColsSlider?.removeEventListener('input', onGrid)
-      gridColsSlider?.removeEventListener('change', onGrid)
+      logoGridSlider?.removeEventListener('input', onLogoGrid)
+      logoGridSlider?.removeEventListener('change', onLogoGrid)
+      bgGridSlider?.removeEventListener('input', onBgGrid)
+      bgGridSlider?.removeEventListener('change', onBgGrid)
       window.removeEventListener('resize', updateAllThumbLabels)
     }
   }, [settings])
 
-  // Re-mount logo when accordion opens (optional, if remote SVG)
-  useEffect(() => {
-    if (!open) return
-
-    const mount = logosMountRef.current
-    const svgUrl = settings?.logosSvgFile?.asset?.url || '/logos.svg'
-    if (!mount) return
-
-    ;(async () => {
-      try {
-        const response = await fetch(svgUrl)
-        if (!response.ok) return
-
-        const svgText = await response.text()
-        mount.innerHTML = svgText
-
-        const svg = mount.querySelector('svg')
-        if (!svg) return
-
-        svg.removeAttribute('width')
-        svg.removeAttribute('height')
-
-        svg.querySelectorAll('[fill]').forEach((node) => {
-          const fill = (node.getAttribute('fill') || '').trim().toLowerCase()
-          if (fill === '#11ff00') {
-            node.setAttribute('fill', 'var(--accent-color)')
-          }
-        })
-      } catch (err) {
-        console.error('SVG mount failed:', err)
-      }
-    })()
-  }, [open, settings])
-
   return (
     <>
-      <BgGridP5 />
+      <BgGridP5 gridValue={bgGridValue} />
 
       <div className="menu-container">
         <div className="menu-row">
           <div className="slider-wrap">
             <input
-              ref={accentHueSliderRef}
-              id="accentHueSlider"
+              ref={logoGridSliderRef}
+              id="logoGridSlider"
               className="slider"
               type="range"
               min="0"
-              max="360"
-              defaultValue="116"
-              aria-label="Accent Hue"
+              max="100"
+              defaultValue="33"
+              aria-label="Logo Grid"
             />
-            <span ref={accentHueLabelRef} id="accentHueLabel" className="thumb-label" aria-hidden="true" />
+            <span ref={logoGridLabelRef} id="logoGridLabel" className="thumb-label" aria-hidden="true" />
           </div>
 
           <button
@@ -404,26 +345,41 @@ export default function MenuExperience({settings}: {settings: Settings}) {
           >
             <span className="label">{settings?.menuLabel || 'Menu'}</span>
             <span ref={chevRef} className="chev">
-              <img src="/menu-arrow.svg" style={{width: '100%', height: '0.6rem'}} alt="" />
-            </span>
+  <img src="/menu-arrow.svg" className="menu-arrow" alt="" />
+</span>
           </button>
 
           <div className="slider-wrap">
             <input
-              ref={gridColsSliderRef}
-              id="gridColsSlider"
+              ref={bgGridSliderRef}
+              id="bgGridSlider"
               className="slider"
               type="range"
               min="0"
               max="100"
-              defaultValue="70"
-              aria-label="Grid Cols"
+              defaultValue="2"
+              aria-label="Background Grid"
             />
-            <span ref={gridColsLabelRef} id="gridColsLabel" className="thumb-label" aria-hidden="true" />
+            <span ref={bgGridLabelRef} id="bgGridLabel" className="thumb-label" aria-hidden="true" />
           </div>
         </div>
 
         <div id="menu-accordion" ref={accRef} className="accordion" hidden>
+
+        <div className="buttons-block">
+            {contactButtons.map((item, i) => (
+              <a
+                key={i}
+                href={item.href || '#'}
+                className="contact-button-link"
+                target={item.href?.startsWith('http') ? '_blank' : undefined}
+                rel={item.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+              >
+                <span className="contact-button">{item.label || 'Button'}</span>
+              </a>
+            ))}
+          </div>
+
           <div ref={innerRef} className="accordion-inner">
             <div id="acc-title" className="acc-title">
               {titleLines.map((line, i) => (
@@ -445,23 +401,11 @@ export default function MenuExperience({settings}: {settings: Settings}) {
             </div>
           </div>
 
-          <div id="logosMount" ref={logosMountRef} className="logos-image" aria-hidden="true">
-            <AccentLogosSvg className="logos-svg-inline" />
+          <div className="logos-image" aria-hidden="true">
+            <img src="/logos.svg" className="logos-svg-inline" alt="" />
           </div>
 
-          <div className="buttons-block">
-            {contactButtons.map((item, i) => (
-              <a
-                key={i}
-                href={item.href || '#'}
-                className="contact-button-link"
-                target={item.href?.startsWith('http') ? '_blank' : undefined}
-                rel={item.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-              >
-                <span className="contact-button">{item.label || 'Button'}</span>
-              </a>
-            ))}
-          </div>
+
         </div>
 
         <div className="menu-logo-block">
@@ -469,7 +413,7 @@ export default function MenuExperience({settings}: {settings: Settings}) {
             {settings?.langLabelDe || 'DE: ORIGINALE GRAFISCHE ORDNUNG'}
           </button>
 
-          <img src={ogoLogoSrc} style={{width: '100%'}} alt="OGO logo" />
+          <OgoGridLogo gridValue={logoGridValue} className="ogo-grid-logo" />
 
           <button className={`lang-btn ${lang === 'en' ? 'is-active' : ''}`} type="button" onClick={() => setLang('en')}>
             {settings?.langLabelEn || 'EN: ORIGINAL GRAPHIC ORDER'}
