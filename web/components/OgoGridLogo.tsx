@@ -159,8 +159,8 @@ export default function OgoGridLogo({gridValue, className}: OgoGridLogoProps) {
   y={y}
   width={cellSize}
   height={cellSize}
-  fill="#9E9E9E"
-  stroke="#9E9E9E"
+  fill="#5A5A5A"
+  stroke="#5A5A5A"
   strokeWidth={0.5}
   vectorEffect="non-scaling-stroke"
 />

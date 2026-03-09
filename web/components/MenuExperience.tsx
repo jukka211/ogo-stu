@@ -56,6 +56,63 @@ export default function MenuExperience({settings}: {settings: Settings}) {
 
   const tlRef = useRef<gsap.core.Timeline | null>(null)
 
+  useEffect(() => {
+    const root = document.documentElement
+    const acc = accRef.current
+
+    const setBlurMask = () => {
+      if (!acc || !open) {
+        root.style.setProperty('--accordion-blur-top', '0px')
+        root.style.setProperty('--accordion-blur-right', '100vw')
+        root.style.setProperty('--accordion-blur-bottom', '100vh')
+        root.style.setProperty('--accordion-blur-left', '100vw')
+        root.style.setProperty('--accordion-blur-opacity', '0')
+        return
+      }
+
+      const rect = acc.getBoundingClientRect()
+      const left = Math.max(0, Math.floor(rect.left))
+      const top = Math.max(0, Math.floor(rect.top))
+      const right = Math.max(0, Math.floor(window.innerWidth - rect.right))
+      const bottom = Math.max(0, Math.floor(window.innerHeight - rect.bottom))
+
+      root.style.setProperty('--accordion-blur-top', `${top}px`)
+      root.style.setProperty('--accordion-blur-right', `${right}px`)
+      root.style.setProperty('--accordion-blur-bottom', `${bottom}px`)
+      root.style.setProperty('--accordion-blur-left', `${left}px`)
+      root.style.setProperty('--accordion-blur-opacity', '1')
+    }
+
+    if (!open || !acc) {
+      setBlurMask()
+      return
+    }
+
+    setBlurMask()
+    let raf = 0
+    let i = 0
+    const chaseFrames = () => {
+      if (!open || !acc) return
+      setBlurMask()
+      if (i < 12) {
+        i += 1
+        raf = window.requestAnimationFrame(chaseFrames)
+      }
+    }
+    raf = window.requestAnimationFrame(chaseFrames)
+
+    window.addEventListener('resize', setBlurMask)
+    const observer = new ResizeObserver(setBlurMask)
+    observer.observe(acc)
+
+    return () => {
+      window.cancelAnimationFrame(raf)
+      window.removeEventListener('resize', setBlurMask)
+      observer.disconnect()
+      root.style.setProperty('--accordion-blur-opacity', '0')
+    }
+  }, [open])
+
   const titleLines = useMemo(
     () => (lang === 'de' ? splitLines(settings?.titleDe) : splitLines(settings?.titleEn)),
     [lang, settings?.titleDe, settings?.titleEn]
@@ -317,7 +374,8 @@ export default function MenuExperience({settings}: {settings: Settings}) {
 
   return (
     <>
-      <BgGridP5 gridValue={bgGridValue} />
+      <BgGridP5 gridValue={bgGridValue} hostId="bg-canvas" className="bg-canvas-layer" />
+      <BgGridP5 gridValue={bgGridValue} hostId="bg-canvas-blur" className="bg-canvas-layer bg-canvas-blur" />
 
       <div className="menu-container">
         <div className="menu-row">

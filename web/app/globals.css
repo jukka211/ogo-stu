@@ -12,6 +12,11 @@
   --menu-row-pad: 3px;
   --control-h: 1.1rem;
   --slider-w: 130px;
+  --accordion-blur-top: 0px;
+  --accordion-blur-right: 100vw;
+  --accordion-blur-bottom: 100vh;
+  --accordion-blur-left: 100vw;
+  --accordion-blur-opacity: 0;
 }
 
 body {
@@ -28,6 +33,31 @@ body {
   position: fixed;
   bottom: 3px;
 }
+
+/* large tablets / small laptops */
+@media (max-width: 1200px) {
+  .menu-container {
+    width: 40vw;
+    max-width: 40vw;
+  }
+}
+
+/* tablets */
+@media (max-width: 900px) {
+  .menu-container {
+    width: 60vw;
+    max-width: 60vw;
+  }
+}
+
+/* large phones */
+@media (max-width: 800px) {
+  .menu-container {
+    width: 75vw;
+    max-width: 75vw;
+  }
+}
+
 
 @media (max-width: 768px) {
   .menu-container {
@@ -49,7 +79,7 @@ body {
   padding: var(--menu-row-pad);
   box-sizing: border-box;
   overflow: hidden;
-  background-color: #9E9E9E;
+  background-color: #5A5A5A;
   border: none;
   border-radius: 5px;
 }
@@ -101,7 +131,7 @@ body {
   justify-content: center;
   height: var(--control-h);
   padding: 0 10px;
-  background-color: #666666;
+  background-color: #393939;
   border-radius: 10px;
   text-align: center;
   text-transform: uppercase;
@@ -114,7 +144,7 @@ body {
   line-height: 1;
   transform: translateY(-1px);
   user-select: none;
-  color: #666666;
+  color: #393939;
 }
 
 /* Menu button: no background / no special styling */
@@ -134,6 +164,7 @@ body {
 }
 
 .accordion {
+  position: relative;
   width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
@@ -141,7 +172,8 @@ body {
   max-height: 60vh;
   transform-origin: top;
   will-change: height;
-  background-color: #666666;
+  background-color: rgba(0, 0, 0, 0.60);
+  transform: translateZ(0);
   border-radius: 5px;
   -webkit-overflow-scrolling: touch;
 }
@@ -152,6 +184,7 @@ body {
   gap: 18px;
   place-items: center;
   color: var(--accent-color);
+  
 }
 
 /* Title styling (keep as requested) */
@@ -191,7 +224,7 @@ body {
 .lang-btn {
     width: 100%;
     height: 1.7rem;
-    background-color: #9E9E9E;
+    background-color: #5A5A5A;
     border: none;
     border-radius: 5px;
   color: #000;
@@ -224,7 +257,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 5;
-  background-color: #666666;
+  background-color: rgba(0, 0, 0, 0);
 }
 
 .contact-button {
@@ -237,7 +270,7 @@ body {
   height: 1.7rem;
   border: none;
   border-radius: 5px;
-  background-color: #9E9E9E;
+  background-color: #5A5A5A;
   color: #000;
   cursor: pointer;
   font-family: "SomeType Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -292,7 +325,7 @@ body {
 /* Track */
 .slider::-webkit-slider-runnable-track {
 height: 100%;
-background: #666666;
+background: #393939;
 border-radius: 10px;
 }
 
@@ -307,7 +340,7 @@ height: 100%;
 border-radius: 10px;
 
 background: var(--accent-color);         /* inner color */
-border: 3px solid #666666; /* 2px ring around (acts like padding) */
+border: 3px solid #393939; /* 2px ring around (acts like padding) */
 box-sizing: border-box;
 margin-top: 0;
 
@@ -317,7 +350,7 @@ cursor: pointer;
 /* Firefox equivalents */
 .slider::-moz-range-track {
 height: 100%;
-background: #666666;
+background: #393939;
 border-radius: 10px;
 }
 
@@ -327,21 +360,39 @@ height: 100%;
 border-radius: 10px;
 
 background: var(--accent-color);
-border: 2px solid #666666;
+border: 2px solid #393939;
 box-sizing: border-box;
 
 cursor: pointer;
 }
 /* --- Background canvas --- */
-#bg-canvas {
-position: fixed;
-inset: 0;
-z-index: -1;          /* behind everything */
-pointer-events: none; /* clicks go through */
+.bg-canvas-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
 }
 
-/* ensure content sits above */
-.menu-container { z-index: 2; }
+#bg-canvas {
+  z-index: 0;
+}
+
+#bg-canvas-blur {
+  z-index: 1;
+  filter: blur(24px);
+  opacity: var(--accordion-blur-opacity);
+  transform: translateZ(0);
+  clip-path: inset(
+    var(--accordion-blur-top)
+    var(--accordion-blur-right)
+    var(--accordion-blur-bottom)
+    var(--accordion-blur-left)
+  );
+  transition: opacity 0.18s ease;
+}
+
+.menu-container {
+  z-index: 2;
+}
 
 
 /* Remove the default focus outline, but keep accessible focus styling */
@@ -381,7 +432,7 @@ button,
   height: 1rem;
   transform: translateY(-1px);
   user-select: none;
-  color: #666666;
+  color: #393939;
 }
 
 .menu-arrow {

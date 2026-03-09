@@ -5,9 +5,11 @@ import {useEffect, useRef} from 'react'
 
 type BgGridP5Props = {
   gridValue: number
+  hostId?: string
+  className?: string
 }
 
-export default function BgGridP5({gridValue}: BgGridP5Props) {
+export default function BgGridP5({gridValue, hostId = 'bg-canvas', className = ''}: BgGridP5Props) {
   const initialized = useRef(false)
   const gridValueRef = useRef(gridValue)
 
@@ -262,7 +264,7 @@ export default function BgGridP5({gridValue}: BgGridP5Props) {
         }
 
         p.setup = () => {
-          const host = document.getElementById('bg-canvas')
+          const host = document.getElementById(hostId)
           const c = p.createCanvas(p.windowWidth, p.windowHeight)
           if (host) c.parent(host)
 
@@ -442,5 +444,5 @@ export default function BgGridP5({gridValue}: BgGridP5Props) {
     }
   }, [])
 
-  return <div id="bg-canvas" />
+  return <div id={hostId} className={className} />
 }
