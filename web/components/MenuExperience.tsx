@@ -46,6 +46,7 @@ export default function MenuExperience({settings}: {settings: Settings}) {
   const btnRef = useRef<HTMLButtonElement | null>(null)
   const chevRef = useRef<HTMLSpanElement | null>(null)
   const accRef = useRef<HTMLDivElement | null>(null)
+  const menuContainerRef = useRef<HTMLDivElement | null>(null)
   const innerRef = useRef<HTMLDivElement | null>(null)
 
   const logoGridSliderRef = useRef<HTMLInputElement | null>(null)
@@ -59,6 +60,7 @@ export default function MenuExperience({settings}: {settings: Settings}) {
   useEffect(() => {
     const root = document.documentElement
     const acc = accRef.current
+    const menuContainer = menuContainerRef.current
 
     const setBlurMask = () => {
       if (!acc || !open) {
@@ -104,6 +106,7 @@ export default function MenuExperience({settings}: {settings: Settings}) {
     window.addEventListener('resize', setBlurMask)
     const observer = new ResizeObserver(setBlurMask)
     observer.observe(acc)
+    if (menuContainer) observer.observe(menuContainer)
 
     return () => {
       window.cancelAnimationFrame(raf)
@@ -377,7 +380,7 @@ export default function MenuExperience({settings}: {settings: Settings}) {
       <BgGridP5 gridValue={bgGridValue} hostId="bg-canvas" className="bg-canvas-layer" />
       <BgGridP5 gridValue={bgGridValue} hostId="bg-canvas-blur" className="bg-canvas-layer bg-canvas-blur" />
 
-      <div className="menu-container">
+      <div ref={menuContainerRef} className="menu-container">
         <div className="menu-row">
           <div className="slider-wrap">
             <input
