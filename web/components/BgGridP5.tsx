@@ -52,6 +52,8 @@ export default function BgGridP5({gridValue, hostId = 'bg-canvas', className = '
         let videoEl: HTMLVideoElement | null = null
         let videoCanPlay = false
 
+        let mobileRows = 0
+
         let onGridChange: ((e: Event) => void) | null = null
         let onFirstGesture: (() => void) | null = null
         let onVisibilityChange: (() => void) | null = null
@@ -61,7 +63,7 @@ export default function BgGridP5({gridValue, hostId = 'bg-canvas', className = '
         }
 
         function getMaxCols() {
-          return isMobileLike() ? 28 : 75
+          return isMobileLike() ? 7 : 75
         }
 
         function getAutoRowMax() {
@@ -74,13 +76,27 @@ export default function BgGridP5({gridValue, hostId = 'bg-canvas', className = '
           numCols = p.constrain(cols, 1, getMaxCols())
         }
 
+        function applyRowsFromSlider(v01: number) {
+          const v = Number.isFinite(v01) ? v01 : 2
+          const rows = Math.round(p.map(v, 0, 100, 1, getAutoRowMax()))
+          mobileRows = p.constrain(rows, 1, getAutoRowMax())
+          if (mobileRows === 1) {
+            numCols = 1
+          }
+        }
+
         function getGlobalMaxRowsForCols(cols: number) {
           const c = Math.max(1, Math.floor(cols || 1))
           const stepped = 1 + Math.floor((c - 1) / getRowGrowthColsPerStep())
           return p.constrain(stepped, 1, getAutoRowMax())
         }
 
+        function getVideoSource() {
+          return isMobileLike() ? '/test-mobile.mp4' : '/test.mp4'
+        }
+
         function getRowCountForColumn(colIndex: number) {
+          if (isMobileLike() && mobileRows > 0) return mobileRows
           const cols = Math.max(1, numCols)
           if (cols === 1) return 1
 
@@ -268,8 +284,11 @@ export default function BgGridP5({gridValue, hostId = 'bg-canvas', className = '
           const c = p.createCanvas(p.windowWidth, p.windowHeight)
           if (host) c.parent(host)
 
+          applyColsFromSlider(gridValueRef.current)
+          if (isMobileLike()) applyRowsFromSlider(gridValueRef.current)
+
           try {
-            vid = p.createVideo('/test.mp4')
+            vid = p.createVideo(getVideoSource())
             videoEl = vid?.elt as HTMLVideoElement | null
 
             if (videoEl) {
@@ -324,7 +343,7 @@ export default function BgGridP5({gridValue, hostId = 'bg-canvas', className = '
           onFirstGesture = () => {
             void tryPlayVideo()
           }
-          window.addEventListener('touchstart', onFirstGesture, {once: true, passive: true})
+            window.addEventListener('touchstart', onFirstGesture, {once: true, passive: true})
           window.addEventListener('click', onFirstGesture, {once: true})
 
           onVisibilityChange = () => {
@@ -339,8 +358,14 @@ export default function BgGridP5({gridValue, hostId = 'bg-canvas', className = '
           onGridChange = (e: Event) => {
             const ce = e as CustomEvent
             if (!ce || !ce.detail) return
+            const isMobile = isMobileLike()
             const cols = Number(ce.detail.cols)
-            if (Number.isFinite(cols)) {
+            const rows = Number(ce.detail.rows)
+            if (isMobile && Number.isFinite(rows) && rows > 0) {
+              mobileRows = p.constrain(Math.round(rows), 1, getAutoRowMax())
+              return
+            }
+            if (!isMobile && Number.isFinite(cols)) {
               numCols = p.constrain(Math.round(cols), 1, getMaxCols())
             }
           }
@@ -351,11 +376,20 @@ export default function BgGridP5({gridValue, hostId = 'bg-canvas', className = '
         p.windowResized = () => {
           p.resizeCanvas(p.windowWidth, p.windowHeight)
           numCols = p.constrain(numCols, 1, getMaxCols())
-          applyColsFromSlider(gridValueRef.current)
+          if (!isMobileLike()) {
+            applyColsFromSlider(gridValueRef.current)
+          }
         }
 
         p.draw = () => {
-          applyColsFromSlider(gridValueRef.current)
+          if (isMobileLike()) {
+            applyRowsFromSlider(gridValueRef.current)
+            if (mobileRows !== 1) {
+              applyColsFromSlider(gridValueRef.current)
+            }
+          } else {
+            applyColsFromSlider(gridValueRef.current)
+          }
 
           p.background(bgColor)
 

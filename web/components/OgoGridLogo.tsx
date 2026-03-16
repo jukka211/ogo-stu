@@ -63,12 +63,17 @@ export default function OgoGridLogo({gridValue, className}: OgoGridLogoProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const [totalW, setTotalW] = useState(600)
 
-  const rows = 5
-
   const cols = useMemo(() => {
-    const v = clamp(Number.isFinite(gridValue) ? gridValue : 33, 0, 100)
-    return Math.round((v / 100) * (15 - 3) + 3)
+    const v = clamp(Number.isFinite(gridValue) ? gridValue : 7, 7, 100)
+    if (v <= 7) return 7
+    return Math.round(((v - 7) / 93) * 8 + 7)
   }, [gridValue])
+
+  const rows = useMemo(() => {
+    if (cols > 13) return 3
+    if (cols > 7) return 4
+    return 5
+  }, [cols])
 
   useEffect(() => {
     const el = wrapRef.current

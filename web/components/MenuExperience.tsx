@@ -38,7 +38,7 @@ export default function MenuExperience({settings}: {settings: Settings}) {
   const [open, setOpen] = useState(false)
 
   // slider 1 = logo grid
-  const [logoGridValue, setLogoGridValue] = useState(33)
+  const [logoGridValue, setLogoGridValue] = useState(7)
 
   // slider 2 = background grid
   const [bgGridValue, setBgGridValue] = useState(2)
@@ -130,6 +130,25 @@ export default function MenuExperience({settings}: {settings: Settings}) {
         {label: 'Instagram', href: 'https://instagram.com'},
         {label: 'Impressum', href: '/impressum'},
       ]
+
+  const getContactHref = (value?: string): string => {
+    const href = (value ?? '').trim()
+    if (!href) return ''
+
+    if (href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('/') || /^https?:\/\//i.test(href)) {
+      return href
+    }
+
+    if (/^\w+:/.test(href)) {
+      return href
+    }
+
+    return `https://${href}`
+  }
+
+  const isExternal = (href: string) => {
+    return href.startsWith('http://') || href.startsWith('https://')
+  }
 
       useEffect(() => {
         const btn = btnRef.current
@@ -251,15 +270,24 @@ export default function MenuExperience({settings}: {settings: Settings}) {
     const bgGridLabel = bgGridLabelRef.current
 
     function sliderValueToLogoCols(value: string | number) {
-      const v = Math.min(100, Math.max(0, Number.parseInt(String(value), 10) || 0))
-      return Math.round((v / 100) * (15 - 3) + 3) // 3..15
+      const v = Math.min(100, Math.max(7, Number.parseInt(String(value), 10) || 7))
+      if (v <= 7) return 7
+      return Math.round(((v - 7) / 93) * 8 + 7) // 7..15
     }
 
     function sliderValueToBgCols(value: string | number) {
       const v = Math.min(100, Math.max(0, Number.parseInt(String(value), 10) || 0))
       const rawCols = Math.round((v / 100) * 74 + 1)
       const isMobile = window.innerWidth < 768
-      return Math.min(isMobile ? 28 : 75, rawCols)
+      return Math.min(isMobile ? 7 : 75, rawCols)
+    }
+
+    function sliderValueToBgRows(value: string | number) {
+      const v = Math.min(100, Math.max(0, Number.parseInt(String(value), 10) || 0))
+      const isMobile = window.innerWidth < 768
+      const mobileMaxRows = 12
+      const maxRows = isMobile ? mobileMaxRows : 13
+      return Math.min(maxRows, Math.round((v / 100) * (maxRows - 1) + 1))
     }
 
     function bgColsToRows(cols: number, maxRowsDesktop = 13) {
@@ -298,8 +326,10 @@ export default function MenuExperience({settings}: {settings: Settings}) {
       if (!bgGridSlider) return
 
       const slider = Number(bgGridSlider.value)
-      const cols = sliderValueToBgCols(slider)
-      const rows = bgColsToRows(cols, 13)
+      const isMobile = window.innerWidth < 768
+      const colsFromSlider = sliderValueToBgCols(slider)
+      const rows = isMobile ? sliderValueToBgRows(slider) : bgColsToRows(colsFromSlider, 13)
+      const cols = isMobile && rows === 1 ? 1 : colsFromSlider
 
       root.style.setProperty('--grid-cols', String(cols))
       root.style.setProperty('--grid-rows', String(rows))
@@ -309,7 +339,7 @@ export default function MenuExperience({settings}: {settings: Settings}) {
 
       window.dispatchEvent(
         new CustomEvent('gridChange', {
-          detail: {cols, rows, slider},
+          detail: {cols, rows, slider, isMobile},
         })
       )
     }
@@ -329,8 +359,9 @@ export default function MenuExperience({settings}: {settings: Settings}) {
         bgGridSlider,
         bgGridLabel,
         (v) => {
-          const cols = sliderValueToBgCols(v)
-          return `${cols}`
+          const isMobile = window.innerWidth < 768
+          const value = isMobile ? sliderValueToBgRows(v) : sliderValueToBgCols(v)
+          return `${value}`
         },
         32
       )
@@ -388,9 +419,9 @@ export default function MenuExperience({settings}: {settings: Settings}) {
               id="logoGridSlider"
               className="slider"
               type="range"
-              min="0"
+              min="7"
               max="100"
-              defaultValue="33"
+              defaultValue="7"
               aria-label="Logo Grid"
             />
             <span ref={logoGridLabelRef} id="logoGridLabel" className="thumb-label" aria-hidden="true" />
@@ -429,15 +460,22 @@ export default function MenuExperience({settings}: {settings: Settings}) {
 
         <div className="buttons-block">
             {contactButtons.map((item, i) => (
-              <a
-                key={i}
-                href={item.href || '#'}
-                className="contact-button-link"
-                target={item.href?.startsWith('http') ? '_blank' : undefined}
-                rel={item.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-              >
-                <span className="contact-button">{item.label || 'Button'}</span>
-              </a>
+              (() => {
+                const href = getContactHref(item.href)
+                if (!href) return null
+
+                return (
+                  <a
+                    key={i}
+                    href={href}
+                    className="contact-button-link"
+                    target={isExternal(href) ? '_blank' : undefined}
+                    rel={isExternal(href) ? 'noopener noreferrer' : undefined}
+                  >
+                    <span className="contact-button">{item.label || 'Button'}</span>
+                  </a>
+                )
+              })()
             ))}
           </div>
 
